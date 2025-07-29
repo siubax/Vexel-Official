@@ -1,75 +1,91 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Pressable, SafeAreaView, StyleSheet } from 'react-native';
+import { fetchCuratedPhotos } from '../../api/pexels';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const HomeScreen = () => {
+  const [images, setImages] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-export default function HomeScreen() {
+  const getPhotos = useCallback(async (pageNum = 1, shouldRefresh = false) => {
+    if (loading || (!hasMore && !shouldRefresh)) return;
+
+    setLoading(true);
+    const data = await fetchCuratedPhotos({ page: pageNum, per_page: 30 });
+    setLoading(false);
+
+    if (data && data.photos && data.photos.length > 0) {
+      if (shouldRefresh) {
+        setImages(data.photos);
+      } else {
+        setImages(prevImages => [...prevImages, ...data.photos]);
+      }
+      setPage(pageNum + 1);
+    } else {
+      setHasMore(false);
+    }
+  }, [loading, hasMore]);
+
+
+  useEffect(() => {
+    getPhotos(); // Fetch initial photos
+  }, []);
+
+  const handleLoadMore = () => {
+    getPhotos(page);
+  };
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return <ActivityIndicator style={{ marginVertical: 20 }} size="large" color="#0000ff" />;
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={images}
+        numColumns={3}
+        keyExtractor={(item, index) => item.id.toString() + index}
+        renderItem={({ item }) => (
+          <Link href={{ pathname: "/details", params: { imageURL: item.src.large2x } }} asChild>
+            <Pressable style={styles.imageWrapper}>
+              <Image
+                source={{ uri: item.src.portrait }}
+                style={styles.image}
+              />
+            </Pressable>
+          </Link>
+        )}
+        contentContainerStyle={styles.listContainer}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  listContainer: {
+    paddingHorizontal: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  imageWrapper: {
+    flex: 1,
+    margin: 4,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
+  image: {
+    width: '100%',
+    height: '100%',
+  }
 });
+
+export default HomeScreen;
