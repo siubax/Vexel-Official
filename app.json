@@ -26,14 +26,6 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      [
-        "@react-native-google-mobile-ads/admob",
-        {
-          "android_app_id": "ca-app-pub-9767437471456053~8652968255"
-        }
-      ]
-    ]
+    }
   }
 }
